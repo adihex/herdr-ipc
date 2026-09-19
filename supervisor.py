@@ -59,10 +59,10 @@ def _persist() -> None:
     os.replace(tmp, path)
 
 
-def _on_message(record: dict[str, Any]) -> None:
+def _on_message(record: dict[str, Any]) -> dict[str, Any]:
     pane = record.get("pane_id")
     if not pane:
-        return
+        return {"received": False, "reason": "missing_pane_id"}
     slim = {
         "machine_id": record.get("machine_id"),
         "workspace_id": record.get("workspace_id"),
@@ -80,6 +80,12 @@ def _on_message(record: dict[str, Any]) -> None:
         _persist()
         with jsonl_path().open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(slim, separators=(",", ":"), ensure_ascii=False) + "\n")
+    return {
+        "received": True,
+        "workspace_id": record.get("workspace_id"),
+        "pane_id": pane,
+        "nonce": record.get("nonce"),
+    }
 
 
 def bind_workspaces() -> None:

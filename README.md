@@ -11,6 +11,12 @@ This directory is two packages in one tree:
 
 Lifecycle (`idle` / `working` / `blocked` / `done`) stays on Herdr. IPC carries extra payloads (blocker reason, artifact, handoff).
 
+The socket is push-based; it does not use a polling loop. Fire-and-forget hooks
+send once. Diagnostic or interactive clients can pass `--wait-ack` for one
+request/reply round trip. The ACK includes a `reply` object when the supervisor
+accepts the message, tied to the sender's pane and nonce. Use Herdr's
+event-driven agent wait for lifecycle completion.
+
 ## Herdr host
 
 ```sh

@@ -10,9 +10,9 @@
 #   HERDR_MACHINE_ID, HERDR_WORKSPACE_ID, HERDR_PANE_ID
 # Socket: ${HERDR_IPC_SOCKET_DIR:-/tmp}/herdr_${HERDR_MACHINE_ID}_${HERDR_WORKSPACE_ID}.sock
 #
-# The Python client is non-blocking: it writes the envelope and returns. It
-# never waits for orchestrator-side processing. Connect+send is capped so a
-# missing daemon cannot stall the worker.
+# The default Python client is non-blocking: it writes the envelope and
+# returns. Set HERDR_IPC_WAIT_ACK=1 for one bounded request/reply round trip.
+# Connect+send is capped so a missing daemon cannot stall the worker.
 
 set -u
 

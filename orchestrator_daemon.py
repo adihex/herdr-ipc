@@ -26,7 +26,7 @@ import threading
 import time
 from collections import deque
 from pathlib import Path
-from typing import Any, Callable, Deque
+from typing import Any, Callable, Deque, Mapping
 
 from protocol import MAX_LINE_BYTES, ProtocolError, canonical_bytes, parse_line
 from routing import (
@@ -59,7 +59,7 @@ class IsolationError(ProtocolError):
     """Envelope targeted the wrong orchestrator."""
 
 
-OnMessage = Callable[[dict[str, Any]], None]
+OnMessage = Callable[[dict[str, Any]], Mapping[str, Any] | None]
 OnReject = Callable[[dict[str, Any], str], None]
 
 
@@ -250,10 +250,15 @@ class OrchestratorDaemon:
                     break
                 try:
                     accepted = self._accept_line(line, t_recv_ns)
-                    await self._try_ack(
-                        writer,
-                        {"ok": True, "t_recv_ns": accepted["t_recv_ns"], "latency_ns": accepted["latency_ns"]},
-                    )
+                    reply = self.on_message(accepted) if self.on_message is not None else None
+                    ack: dict[str, Any] = {
+                        "ok": True,
+                        "t_recv_ns": accepted["t_recv_ns"],
+                        "latency_ns": accepted["latency_ns"],
+                    }
+                    if reply is not None:
+                        ack["reply"] = dict(reply)
+                    await self._try_ack(writer, ack)
                 except (ProtocolError, IsolationError, RoutingError) as exc:
                     await self._try_ack(writer, {"ok": False, "error": str(exc)})
         except (ConnectionResetError, BrokenPipeError, OSError, asyncio.CancelledError):
@@ -297,8 +302,6 @@ class OrchestratorDaemon:
         record["orchestrator_workspace_id"] = self.workspace_id
         with self._lock:
             self.accepted.append(record)
-        if self.on_message is not None:
-            self.on_message(record)
         return record
 
     def _enforce_isolation(self, envelope: dict[str, Any]) -> None:
