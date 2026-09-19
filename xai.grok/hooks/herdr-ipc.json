@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HOOK=\"$HOME/.grok/hooks/herdr-ipc-agent.sh\"; if [ -x \"$HOOK\" ]; then /bin/sh \"$HOOK\"; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HOOK=\"$HOME/.grok/hooks/herdr-ipc-agent.sh\"; if [ -x \"$HOOK\" ]; then /bin/sh \"$HOOK\"; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

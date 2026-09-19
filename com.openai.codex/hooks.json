@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$CODEX_HOME/hooks/herdr-ipc-agent.sh\" ]; then /bin/sh \"$CODEX_HOME/hooks/herdr-ipc-agent.sh\"; elif [ -x \"$HOME/.codex/hooks/herdr-ipc-agent.sh\" ]; then /bin/sh \"$HOME/.codex/hooks/herdr-ipc-agent.sh\"; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$CODEX_HOME/hooks/herdr-ipc-agent.sh\" ]; then /bin/sh \"$CODEX_HOME/hooks/herdr-ipc-agent.sh\"; elif [ -x \"$HOME/.codex/hooks/herdr-ipc-agent.sh\" ]; then /bin/sh \"$HOME/.codex/hooks/herdr-ipc-agent.sh\"; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

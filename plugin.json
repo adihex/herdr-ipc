@@ -1,0 +1,19 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "herdr.ipc",
+  "version": "1.1.0",
+  "description": "Workspace-scoped Herdr IPC: push extra payloads from pane workers, inspect inboxes. Lifecycle state stays on Herdr.",
+  "license": "MIT",
+  "keywords": ["herdr", "ipc", "orchestration"],
+  "extensions": {
+    "com.anthropic.claude-code": {
+      "hooks": "com.anthropic.claude-code/hooks/hooks.json"
+    },
+    "xai.grok": {
+      "hooks": "xai.grok/hooks/herdr-ipc.json"
+    },
+    "com.openai.codex": {
+      "hooks": "com.openai.codex/hooks.json"
+    }
+  }
+}

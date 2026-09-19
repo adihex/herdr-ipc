@@ -1,0 +1,59 @@
+id = "local.ipc"
+name = "Herdr IPC"
+version = "1.1.0"
+min_herdr_version = "0.8.0"
+description = "Workspace-scoped Unix-socket IPC for pane workers. Zero polling, HMAC-isolated, live agent ingest."
+platforms = ["linux", "macos"]
+
+[[startup]]
+command = ["sh", "run.sh"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["python3", "on_event.py"]
+
+[[events]]
+on = "workspace.created"
+command = ["python3", "ingest.py", "--ensure-only"]
+
+[[actions]]
+id = "ingest"
+title = "IPC: ingest live agents"
+contexts = ["global", "workspace"]
+command = ["python3", "ingest.py"]
+
+[[actions]]
+id = "status"
+title = "IPC: routing matrix"
+contexts = ["global", "workspace"]
+command = ["python3", "status.py"]
+
+[[actions]]
+id = "verify"
+title = "IPC: live isolation proof"
+contexts = ["global"]
+command = ["python3", "verify_live.py"]
+
+[[actions]]
+id = "inbox"
+title = "IPC: open inbox"
+contexts = ["global", "workspace"]
+command = ["python3", "open_inbox.py"]
+
+[[actions]]
+id = "install-hooks"
+title = "IPC: install agent-client hooks"
+contexts = ["global"]
+command = ["python3", "install_hooks.py"]
+
+[[panes]]
+id = "matrix"
+title = "IPC matrix"
+placement = "overlay"
+command = ["python3", "matrix.py"]
+
+[[panes]]
+id = "inbox"
+title = "IPC inbox"
+placement = "tab"
+command = ["python3", "inbox.py"]
