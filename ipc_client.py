@@ -28,6 +28,7 @@ from routing import (
     RoutingError,
     key_path,
     load_identity,
+    load_sender_identity,
     production_socket_path,
     read_key,
     sign,
@@ -121,9 +122,20 @@ def push(
     timeout_s: float = DEFAULT_TIMEOUT_S,
     t_send_ns: int | None = None,
     extra: Mapping[str, Any] | None = None,
+    sender_kind: str | None = None,
+    sender_id: str | None = None,
+    sender_name: str | None = None,
+    session_id: str | None = None,
 ) -> PushResult:
     env = dict(os.environ if environ is None else environ)
     machine, workspace, pane = load_identity(env)
+    sender = load_sender_identity(
+        env,
+        sender_kind=sender_kind,
+        sender_id=sender_id,
+        sender_name=sender_name,
+        session_id=session_id,
+    )
     path = socket_path(machine, workspace, socket_dir if socket_dir is not None else env.get("HERDR_IPC_SOCKET_DIR"))
     key = read_key(key_path(path))
     body: dict[str, Any] = dict(payload or {})
@@ -134,6 +146,8 @@ def push(
         machine_id=machine,
         workspace_id=workspace,
         pane_id=pane,
+        session_id=sender["session_id"],
+        sender=sender,
         status=status,
         payload=body,
         t_send_ns=send_ns,
@@ -220,6 +234,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--wait-ack", action="store_true")
     parser.add_argument("--timeout-ms", type=float, default=DEFAULT_TIMEOUT_S * 1000)
     parser.add_argument("--print-socket", action="store_true")
+    parser.add_argument("--sender-kind", choices=("user", "agent", "supervisor", "system"))
+    parser.add_argument("--sender-id")
+    parser.add_argument("--sender-name")
+    parser.add_argument("--session-id")
     args = parser.parse_args(argv)
 
     try:
@@ -230,6 +248,12 @@ def main(argv: list[str] | None = None) -> int:
 
     path = socket_path(machine, workspace, args.socket_dir)
     if args.print_socket:
+        sender = load_sender_identity(
+            sender_kind=args.sender_kind,
+            sender_id=args.sender_id,
+            sender_name=args.sender_name,
+            session_id=args.session_id,
+        )
         print(
             json.dumps(
                 {
@@ -238,6 +262,9 @@ def main(argv: list[str] | None = None) -> int:
                     "machine_id": machine,
                     "workspace_id": workspace,
                     "pane_id": pane,
+                    "session_id": sender["session_id"],
+                    "sender": sender,
+                    "socket_id": f"{machine}/{workspace}",
                 },
                 separators=(",", ":"),
             )
@@ -258,6 +285,10 @@ def main(argv: list[str] | None = None) -> int:
             socket_dir=args.socket_dir,
             wait_ack=args.wait_ack,
             timeout_s=max(args.timeout_ms, 1.0) / 1000.0,
+            sender_kind=args.sender_kind,
+            sender_id=args.sender_id,
+            sender_name=args.sender_name,
+            session_id=args.session_id,
         )
     except (PushError, RoutingError, ProtocolError) as exc:
         print(f"herdr-push: {exc}", file=sys.stderr)

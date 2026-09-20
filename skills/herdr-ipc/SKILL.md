@@ -33,6 +33,14 @@ From this skill directory:
 ../../herdr-push-hook.sh done '{"artifact":"path/or/url","summary":"one line"}'
 ```
 
+Every push is protocol v2 and carries a signed sender identity. Agent hooks
+default to `sender.kind=agent`; use `HERDR_SENDER_ID` or `HERDR_AGENT_ID` for a
+stable agent ID and `HERDR_SESSION_ID` for the session. The fallback order for
+session identity is `HERDR_SESSION_ID`, `HERDR_TAB_ID`, then `HERDR_PANE_ID`.
+For a user-originated message, call `ipc_client.py` with
+`--sender-kind user --sender-id <id> --sender-name <name> --session-id <id>`.
+The envelope also includes the workspace socket identity as `socket_id`.
+
 `HERDR_MACHINE_ID` defaults to `local`. The socket is
 
 `/tmp/herdr_${HERDR_MACHINE_ID:-local}_${HERDR_WORKSPACE_ID}.sock`

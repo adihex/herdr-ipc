@@ -17,7 +17,7 @@ STATUS_ALIASES = {
     "complete": "done",
     "completed": "done",
 }
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 MAX_LINE_BYTES = 64 * 1024
 HMAC_FIELDS = (
     "v",
@@ -26,10 +26,14 @@ HMAC_FIELDS = (
     "machine_id",
     "workspace_id",
     "pane_id",
+    "session_id",
+    "socket_id",
+    "sender",
     "status",
     "nonce",
     "payload",
 )
+SENDER_KINDS = frozenset({"user", "agent", "supervisor", "system"})
 
 
 class ProtocolError(ValueError):
@@ -54,6 +58,26 @@ def _payload(value: Any) -> dict[str, Any]:
     return value
 
 
+def _sender(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ProtocolError("sender must be a JSON object")
+    required = {"kind": str, "id": str, "session_id": str, "pane_id": str}
+    out: dict[str, Any] = {}
+    for key, typ in required.items():
+        item = value.get(key)
+        if not isinstance(item, typ) or not item:
+            raise ProtocolError(f"sender.{key} must be a non-empty string")
+        out[key] = item
+    if out["kind"] not in SENDER_KINDS:
+        raise ProtocolError(f"sender.kind must be one of {sorted(SENDER_KINDS)}")
+    name = value.get("name")
+    if name is not None:
+        if not isinstance(name, str) or not name:
+            raise ProtocolError("sender.name must be a non-empty string when present")
+        out["name"] = name
+    return out
+
+
 def canonical_bytes(envelope: Mapping[str, Any]) -> bytes:
     body = {field: envelope[field] for field in HMAC_FIELDS}
     return json.dumps(body, separators=(",", ":"), sort_keys=True, ensure_ascii=False).encode("utf-8")
@@ -64,6 +88,8 @@ def build_envelope(
     machine_id: str,
     workspace_id: str,
     pane_id: str,
+    session_id: str,
+    sender: Mapping[str, Any],
     status: str,
     payload: Mapping[str, Any] | None = None,
     t_send_ns: int | None = None,
@@ -77,6 +103,9 @@ def build_envelope(
         "machine_id": machine_id,
         "workspace_id": workspace_id,
         "pane_id": pane_id,
+        "session_id": session_id,
+        "socket_id": f"{machine_id}/{workspace_id}",
+        "sender": dict(sender),
         "status": normalize_status(status),
         "nonce": nonce or secrets.token_hex(16),
         "payload": dict(payload or {}),
@@ -124,6 +153,8 @@ def validate_envelope(value: Mapping[str, Any]) -> dict[str, Any]:
         "machine_id": str,
         "workspace_id": str,
         "pane_id": str,
+        "session_id": str,
+        "socket_id": str,
         "status": str,
         "nonce": str,
         "hmac": str,
@@ -139,6 +170,13 @@ def validate_envelope(value: Mapping[str, Any]) -> dict[str, Any]:
             raise ProtocolError(f"{key} must be {typ.__name__}")
         out[key] = item
     out["status"] = normalize_status(out["status"])
+    out["sender"] = _sender(value.get("sender"))
+    if out["sender"]["session_id"] != out["session_id"]:
+        raise ProtocolError("sender.session_id must match session_id")
+    if out["sender"]["pane_id"] != out["pane_id"]:
+        raise ProtocolError("sender.pane_id must match pane_id")
+    if out["socket_id"] != f"{out['machine_id']}/{out['workspace_id']}":
+        raise ProtocolError("socket_id must match machine_id/workspace_id")
     out["payload"] = _payload(value.get("payload"))
     if len(out["nonce"]) > 128 or not out["nonce"]:
         raise ProtocolError("nonce is invalid")

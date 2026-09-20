@@ -29,7 +29,7 @@ def main() -> int:
     print(f"machine: {mid}")
     print(f"snapshot: {snapshot_path()}")
     print()
-    print(f"{'WS':<8} {'PANE':<12} {'AGENT':<10} {'LIVE':<10} {'IPC':<10} {'SOCK':<28} {'AGE':>8} {'ROUTE'}")
+    print(f"{'WS':<8} {'SENDER':<24} {'AGENT':<10} {'LIVE':<10} {'IPC':<10} {'SOCK':<28} {'AGE':>8} {'ROUTE'}")
     print("-" * 100)
     leakage = 0
     matched = 0
@@ -40,6 +40,8 @@ def main() -> int:
         live = str(agent.get("agent_status") or "?")
         name = str(agent.get("agent") or "?")
         rec = panes.get(pane) or {}
+        sender = rec.get("sender") or {}
+        sender_label = f"{sender.get('kind', '?')}:{sender.get('name') or sender.get('id') or pane}"[:24]
         ipc = str(rec.get("status") or "-")
         sock = str(socket_path(mid, ws).name) if ws else "-"
         route = "PASS"
@@ -52,7 +54,7 @@ def main() -> int:
         else:
             matched += 1
         print(
-            f"{ws:<8} {pane:<12} {name:<10} {live:<10} {ipc:<10} {sock:<28} {_age_ms(rec.get('t_recv_ns')):>8} {route}"
+            f"{ws:<8} {sender_label:<24} {name:<10} {live:<10} {ipc:<10} {sock:<28} {_age_ms(rec.get('t_recv_ns')):>8} {route}"
         )
     print("-" * 100)
     print(f"matched={matched} missing={missing} leakage={leakage} live_agents={len(agents)}")

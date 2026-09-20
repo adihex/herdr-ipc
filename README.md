@@ -13,9 +13,11 @@ Lifecycle (`idle` / `working` / `blocked` / `done`) stays on Herdr. IPC carries 
 
 The socket is push-based; it does not use a polling loop. Fire-and-forget hooks
 send once. Diagnostic or interactive clients can pass `--wait-ack` for one
-request/reply round trip. The ACK includes a `reply` object when the supervisor
-accepts the message, tied to the sender's pane and nonce. Use Herdr's
-event-driven agent wait for lifecycle completion.
+request/reply round trip. Every protocol v2 message carries a signed `socket_id`,
+`session_id`, and `sender` object, so inboxes can distinguish a `user` message
+from an `agent`, `supervisor`, or `system` message. The ACK includes a `reply`
+object when the supervisor accepts the message, tied to the sender identity and
+nonce. Use Herdr's event-driven agent wait for lifecycle completion.
 
 ## Herdr host
 
@@ -70,6 +72,20 @@ Manual push from a pane:
 
 ```sh
 ./herdr-push-hook.sh blocked '{"reason":"need API key"}'
+```
+
+The current pane defaults to `sender.kind=agent`, with the sender ID taken from
+`HERDR_SENDER_ID`, `HERDR_AGENT_ID`, or `HERDR_PANE_ID`. Session identity comes
+from `HERDR_SESSION_ID`, then `HERDR_TAB_ID`, then the pane ID. Send an explicit
+user message with:
+
+```sh
+python3 ipc_client.py working '{"source":"manual-user-message"}' \
+  --wait-ack \
+  --sender-kind user \
+  --sender-id aditya \
+  --sender-name Aditya \
+  --session-id user-session
 ```
 
 ## Isolation

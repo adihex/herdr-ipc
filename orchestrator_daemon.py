@@ -127,6 +127,7 @@ class OrchestratorDaemon:
         self.key: bytes | None = None
         self.accepted: Deque[dict[str, Any]] = deque(maxlen=MAX_INBOX)
         self.rejected: Deque[dict[str, Any]] = deque(maxlen=MAX_INBOX)
+        self.sessions: dict[str, dict[str, Any]] = {}
         self._lock = threading.Lock()
         self._ready = threading.Event()
         self._shutdown = threading.Event()
@@ -181,6 +182,10 @@ class OrchestratorDaemon:
     def reject_snapshot(self) -> list[dict[str, Any]]:
         with self._lock:
             return list(self.rejected)
+
+    def identity_snapshot(self) -> dict[str, dict[str, Any]]:
+        with self._lock:
+            return {session: dict(sender) for session, sender in self.sessions.items()}
 
     def _thread_main(self) -> None:
         try:
@@ -302,6 +307,7 @@ class OrchestratorDaemon:
         record["orchestrator_workspace_id"] = self.workspace_id
         with self._lock:
             self.accepted.append(record)
+            self.sessions[record["session_id"]] = dict(record["sender"])
         return record
 
     def _enforce_isolation(self, envelope: dict[str, Any]) -> None:

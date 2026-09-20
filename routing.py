@@ -94,6 +94,32 @@ def load_identity(environ: dict[str, str] | None = None) -> tuple[str, str, str]
     return machine, workspace, pane
 
 
+def load_sender_identity(
+    environ: dict[str, str] | None = None,
+    *,
+    sender_kind: str | None = None,
+    sender_id: str | None = None,
+    sender_name: str | None = None,
+    session_id: str | None = None,
+) -> dict[str, str]:
+    """Resolve the signed sender identity for one Herdr session."""
+    env = environ if environ is not None else os.environ
+    _machine, _workspace, pane = load_identity(env)
+    session = session_id or env.get("HERDR_SESSION_ID") or env.get("HERDR_TAB_ID") or pane
+    resolved_id = sender_id or env.get("HERDR_SENDER_ID") or env.get("HERDR_AGENT_ID") or pane
+    kind = sender_kind or env.get("HERDR_SENDER_KIND") or "agent"
+    name = sender_name or env.get("HERDR_SENDER_NAME") or env.get("HERDR_DISPLAY_AGENT") or env.get("HERDR_AGENT")
+    identity = {
+        "kind": validate_id(kind, "HERDR_SENDER_KIND"),
+        "id": validate_id(resolved_id, "HERDR_SENDER_ID"),
+        "session_id": validate_id(session, "HERDR_SESSION_ID"),
+        "pane_id": pane,
+    }
+    if name:
+        identity["name"] = name[:128]
+    return identity
+
+
 def generate_key() -> bytes:
     return secrets.token_bytes(32)
 

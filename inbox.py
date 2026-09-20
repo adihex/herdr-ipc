@@ -43,6 +43,13 @@ def _payload_note(payload: dict) -> str:
     return json.dumps(payload, separators=(",", ":"), ensure_ascii=False)[:56]
 
 
+def _sender_label(record: dict) -> str:
+    sender = record.get("sender") or {}
+    kind = str(sender.get("kind") or "?")
+    identity = str(sender.get("name") or sender.get("id") or record.get("pane_id") or "?")
+    return f"{kind}:{identity}"[:24]
+
+
 def render() -> str:
     snap = load_snapshot()
     panes = snap.get("panes") or {}
@@ -51,8 +58,8 @@ def render() -> str:
         "HERDR IPC INBOX   Ctrl-C closes the pane",
         f"snapshot: {snapshot_path()}",
         "",
-        f"{'WS':<8} {'PANE':<12} {'STATUS':<10} {'NOTE':<56}",
-        "-" * 90,
+        f"{'WS':<8} {'SENDER':<24} {'SESSION':<16} {'STATUS':<10} {'NOTE':<32}",
+        "-" * 100,
     ]
     if not rows:
         lines.append("(empty — run: herdr plugin action invoke local.ipc.ingest)")
@@ -60,9 +67,10 @@ def render() -> str:
         note = _payload_note(rec.get("payload") or {})
         lines.append(
             f"{str(rec.get('workspace_id') or '-'):<8} "
-            f"{str(rec.get('pane_id') or '-'):<12} "
+            f"{_sender_label(rec):<24} "
+            f"{str(rec.get('session_id') or '-'):<16} "
             f"{str(rec.get('status') or '-'):<10} "
-            f"{note:<56}"
+            f"{note:<32}"
         )
     recent = _tail_jsonl(jsonl_path())
     lines.extend(["", f"recent payloads ({len(recent)})", "-" * 90])
@@ -70,7 +78,8 @@ def render() -> str:
         note = _payload_note(rec.get("payload") or {})
         lines.append(
             f"{str(rec.get('workspace_id') or '-'):<8} "
-            f"{str(rec.get('pane_id') or '-'):<12} "
+            f"{_sender_label(rec):<24} "
+            f"{str(rec.get('session_id') or '-'):<16} "
             f"{str(rec.get('status') or '-'):<10} "
             f"{note}"
         )

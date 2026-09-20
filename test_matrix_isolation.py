@@ -287,6 +287,7 @@ def _env_for(machine: str, workspace: str, pane: str, socket_dir: str) -> dict[s
     env["HERDR_MACHINE_ID"] = machine
     env["HERDR_WORKSPACE_ID"] = workspace
     env["HERDR_PANE_ID"] = pane
+    env["HERDR_SESSION_ID"] = f"{workspace}:{pane}"
     env["HERDR_IPC_SOCKET_DIR"] = socket_dir
     return env
 
@@ -440,6 +441,16 @@ def run_matrix() -> MatrixReport:
         )
         if not drained:
             errors.append("measured burst did not fully drain into orchestrator inboxes")
+        for machine, workspace in matrices():
+            for record in daemons[key_of(machine, workspace)].snapshot():
+                sender = record.get("sender") or {}
+                if (
+                    sender.get("kind") != "agent"
+                    or sender.get("id") != record.get("pane_id")
+                    or sender.get("session_id") != record.get("session_id")
+                    or sender.get("pane_id") != record.get("pane_id")
+                ):
+                    errors.append(f"sender identity mismatch in {machine}/{workspace}: {record}")
 
         attacks_sent = 0
         attacks_rejected = 0
@@ -457,6 +468,13 @@ def run_matrix() -> MatrixReport:
                     machine_id=src_m,
                     workspace_id=src_w,
                     pane_id="attacker",
+                    session_id="attacker-session",
+                    sender={
+                        "kind": "agent",
+                        "id": "attacker",
+                        "session_id": "attacker-session",
+                        "pane_id": "attacker",
+                    },
                     status="blocked",
                     payload={"phase": "attack", "kind": "wrong_socket"},
                 )
@@ -464,6 +482,13 @@ def run_matrix() -> MatrixReport:
                     machine_id=dst_m,
                     workspace_id=dst_w,
                     pane_id="attacker",
+                    session_id="attacker-session",
+                    sender={
+                        "kind": "agent",
+                        "id": "attacker",
+                        "session_id": "attacker-session",
+                        "pane_id": "attacker",
+                    },
                     status="done",
                     payload={"phase": "attack", "kind": "forged_identity"},
                 )

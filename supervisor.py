@@ -29,7 +29,7 @@ from routing import RoutingError, validate_id
 _stop = threading.Event()
 _lock = threading.Lock()
 _daemons: dict[str, OrchestratorDaemon] = {}
-_snapshot: dict[str, Any] = {"panes": {}, "updated_ns": 0}
+_snapshot: dict[str, Any] = {"panes": {}, "sessions": {}, "updated_ns": 0}
 
 
 def _workspaces() -> list[str]:
@@ -67,6 +67,9 @@ def _on_message(record: dict[str, Any]) -> dict[str, Any]:
         "machine_id": record.get("machine_id"),
         "workspace_id": record.get("workspace_id"),
         "pane_id": pane,
+        "session_id": record.get("session_id"),
+        "socket_id": record.get("socket_id"),
+        "sender": record.get("sender") or {},
         "status": record.get("status"),
         "t_recv_ns": record.get("t_recv_ns"),
         "latency_ns": record.get("latency_ns"),
@@ -76,6 +79,9 @@ def _on_message(record: dict[str, Any]) -> dict[str, Any]:
     }
     with _lock:
         _snapshot["panes"][pane] = slim
+        session = record.get("session_id")
+        if session:
+            _snapshot.setdefault("sessions", {})[session] = record.get("sender") or {}
         _snapshot["updated_ns"] = time.time_ns()
         _persist()
         with jsonl_path().open("a", encoding="utf-8") as handle:
@@ -84,6 +90,8 @@ def _on_message(record: dict[str, Any]) -> dict[str, Any]:
         "received": True,
         "workspace_id": record.get("workspace_id"),
         "pane_id": pane,
+        "session_id": record.get("session_id"),
+        "sender": record.get("sender") or {},
         "nonce": record.get("nonce"),
     }
 
@@ -121,6 +129,7 @@ def main() -> int:
     with _lock:
         _snapshot.update(existing)
         _snapshot.setdefault("panes", {})
+        _snapshot.setdefault("sessions", {})
     bind_workspaces()
     if not _daemons:
         # Still listen for the caller's workspace so event hooks have a socket.
